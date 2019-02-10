@@ -4,12 +4,55 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
-    <changeSet id="table" author="gg">
+    <changeSet id="subscription" author="gg">
         <sql>
-
+            CREATE TABLE subscription
+            (
+            id BIGINT,
+            rss_url VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
+            feed_id BIGINT,
+            CONSTRAINT pk_subscription PRIMARY KEY (id)
+            );
         </sql>
         <rollback>
+            DROP TABLE IF EXISTS subscription;
+        </rollback>
+    </changeSet>
 
+    <changeSet id="feed" author="gg">
+        <sql>
+            CREATE TABLE feed
+            (
+            id BIGINT,
+            feed_url VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
+            last_build_date TIMESTAMP WITHOUT TIME ZONE,
+            title TEXT COLLATE pg_catalog."default" NOT NULL,
+            CONSTRAINT pk_feed PRIMARY KEY (id)
+            );
+        </sql>
+        <rollback>
+            DROP TABLE IF EXISTS feed;
+        </rollback>
+    </changeSet>
+
+    <changeSet id="feed_item" author="gg">
+        <sql>
+            CREATE TABLE feed_item
+            (
+            id BIGINT,
+            author VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
+            description TEXT COLLATE pg_catalog."default" NOT NULL,
+            guid VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
+            json_item TEXT COLLATE pg_catalog."default" NOT NULL,
+            publication_date TIMESTAMP WITHOUT TIME ZONE,
+            title TEXT COLLATE pg_catalog."default" NOT NULL,
+            subscription_id BIGINT,
+            created_at TIMESTAMP WITHOUT TIME ZONE,
+            CONSTRAINT pk_feed_item PRIMARY KEY (id)
+            );
+        </sql>
+        <rollback>
+            DROP TABLE IF EXISTS feed_item;
         </rollback>
     </changeSet>
 

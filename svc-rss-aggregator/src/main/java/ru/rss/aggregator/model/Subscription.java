@@ -1,6 +1,8 @@
 package ru.rss.aggregator.model;
 
 import lombok.*;
+import org.hibernate.annotations.LazyToOne;
+import org.hibernate.annotations.LazyToOneOption;
 import ru.rss.aggregator.model.common.AbstractEntity;
 
 import javax.persistence.*;
@@ -20,7 +22,7 @@ public class Subscription extends AbstractEntity<Long> {
 	@Column(name = "subscription_cnt")
 	private int subscriptionCount;
 
-	@OneToOne(fetch = FetchType.LAZY)
+	@OneToOne(fetch = FetchType.EAGER) //todo: LAZY
 	@JoinColumn(name = "feed_id")
 	private Feed feed;
 

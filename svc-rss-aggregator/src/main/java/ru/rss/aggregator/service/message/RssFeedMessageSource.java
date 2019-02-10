@@ -64,12 +64,7 @@ public class RssFeedMessageSource implements MessageSource<List<SyndFeedWrapper>
 		return feeds;
 	}
 
-	// Arrays.asList("http://stackoverflow.com/feeds/tag?tagnames=rome",
-	// "http://rss.nytimes.com/services/xml/rss/nyt/Technology.xml");
-
 	private SyndFeed readFeed(String url) throws IOException, IllegalArgumentException, FeedException {
-
-		// fetch data from URL
 		SyndFeedInput input = new SyndFeedInput();
 		SyndFeed feed = null;
 		HttpGet httpGet = new HttpGet(url);
@@ -83,9 +78,6 @@ public class RssFeedMessageSource implements MessageSource<List<SyndFeedWrapper>
 				}
 			}
 		}
-
 		return feed;
-
 	}
-
 }

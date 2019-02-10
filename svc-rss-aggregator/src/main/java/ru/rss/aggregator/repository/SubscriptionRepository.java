@@ -11,5 +11,5 @@ public interface SubscriptionRepository extends CommonRepository<Subscription, L
 
     Subscription findByRssUrl(String rssUrl);
 
-    List<Subscription> findByRssUrls(Set<String> rssUrls);
+    List<Subscription> rssUrl(Set<String> rssUrls);
 }
