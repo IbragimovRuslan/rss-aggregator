@@ -19,9 +19,6 @@ public class Subscription extends AbstractEntity<Long> {
 	@Column(name = "rss_url")
 	private String rssUrl;
 
-	@Column(name = "subscription_cnt")
-	private int subscriptionCount;
-
 	@OneToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "feed_id")
 	private Feed feed;

@@ -1,5 +1,6 @@
 package ru.rss.aggregator.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -14,7 +15,7 @@ import java.util.Date;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
+@ToString(callSuper = true, exclude = "subscription")
 public class FeedItem extends AbstractEntity<Long> {
 
 	@Column(name = "guid")
@@ -35,6 +36,7 @@ public class FeedItem extends AbstractEntity<Long> {
 	@Column(name = "json_item")
 	private String jsonItem;
 
+	@JsonIgnore
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "subscription_id")
 	private Subscription subscription;

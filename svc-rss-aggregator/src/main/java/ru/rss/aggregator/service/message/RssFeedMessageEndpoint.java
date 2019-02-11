@@ -20,7 +20,7 @@ import ru.rss.aggregator.repository.FeedItemRepository;
 import ru.rss.aggregator.repository.FeedRepository;
 import ru.rss.aggregator.repository.SubscriptionRepository;
 import ru.rss.aggregator.repository.elasticsearch.ItemRepository;
-import ru.rss.aggregator.utils.TimeUtils;
+import ru.rss.aggregator.utils.DateTimeUtils;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -28,11 +28,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
+
 @MessageEndpoint
 @AllArgsConstructor
 public class RssFeedMessageEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(RssFeedMessageEndpoint.class);
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper().disable(DEFAULT_VIEW_INCLUSION);
 
     private final ItemRepository itemRepository;
     private final FeedItemRepository feedItemRepository;
@@ -41,6 +43,7 @@ public class RssFeedMessageEndpoint {
 
     @ServiceActivator(inputChannel = "feedChannel", poller = @Poller(maxMessagesPerPoll = "1", fixedDelay = "10000"))
     public void handleFeeds(Message<List<SyndFeedWrapper>> message) throws IOException {
+
         List<SyndFeedWrapper> syndFeeds = message.getPayload();
         for (SyndFeedWrapper syndFeedWrapper : syndFeeds) {
             SyndFeed syndFeed = syndFeedWrapper.getSyndFeed();
@@ -57,12 +60,12 @@ public class RssFeedMessageEndpoint {
                 continue;
             }
 
-            // There's no easy way to update feed if it has no lastBuildDate. We're not replicating this feed.
+            // There's no easy way to update feed if it has no lastBuildDate. We're not replicating such feeds.
             if (Objects.isNull(syndFeed.getPublishedDate())) {
                 logger.info("Skip Feed {} - has no lastBuildDate, ", feedUrl);
                 continue;
             }
-            LocalDateTime publishedDate = TimeUtils.dateToLocalDateTime(syndFeed.getPublishedDate());
+            LocalDateTime publishedDate = DateTimeUtils.dateToLocalDateTime(syndFeed.getPublishedDate());
 
             Feed feed = s.getFeed();
             if (feed != null) {
@@ -97,18 +100,23 @@ public class RssFeedMessageEndpoint {
                     continue;
                 }
 
-                String jsonItemStr = OBJECT_MAPPER.writeValueAsString(syndEntry);
-
                 FeedItem feedItem = new FeedItem(
                         guid,
                         syndEntry.getTitle(),
                         Objects.isNull(syndEntry.getDescription()) ? null : syndEntry.getDescription().getValue(),
                         syndEntry.getAuthor(),
-                        TimeUtils.dateToLocalDateTime(syndEntry.getPublishedDate()),
-                        jsonItemStr,
+                        DateTimeUtils.dateToLocalDateTime(syndEntry.getPublishedDate()),
+                        null,
                         s,
                         LocalDateTime.now()
                 );
+
+                /*SyndEntryImpl has an instance of the ObjectBean which refers back to SyndEntryImp, so we can't automatically serialize this object
+                * because of recursion error. So we serialize an instance of a feed item model class.
+                */
+                String jsonItemStr = OBJECT_MAPPER.writeValueAsString(feedItem);
+                feedItem.setJsonItem(jsonItemStr);
+
                 feedItems.add(feedItem);
                 elasticItems.add(new Item(jsonItemStr));
             }

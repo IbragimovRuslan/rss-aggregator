@@ -4,18 +4,14 @@
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
-    <changeSet id="subscription" author="gg">
+    <changeSet id="sequence" author="gg">
         <sql>
-            CREATE TABLE subscription
-            (
-            id BIGINT,
-            rss_url VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
-            feed_id BIGINT,
-            CONSTRAINT pk_subscription PRIMARY KEY (id)
-            );
+            CREATE SEQUENCE IF NOT EXISTS hibernate_sequence
+            START 1
+            INCREMENT 1;
         </sql>
         <rollback>
-            DROP TABLE IF EXISTS subscription;
+            DROP SEQUENCE IF EXISTS hibernate_sequence;
         </rollback>
     </changeSet>
 
@@ -35,6 +31,22 @@
         </rollback>
     </changeSet>
 
+    <changeSet id="subscription" author="gg">
+        <sql>
+            CREATE TABLE subscription
+            (
+            id BIGINT,
+            rss_url VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
+            feed_id BIGINT,
+            CONSTRAINT pk_subscription PRIMARY KEY (id),
+            CONSTRAINT fk_subscription_to_feed FOREIGN KEY (feed_id) REFERENCES feed (id)
+            );
+        </sql>
+        <rollback>
+            DROP TABLE IF EXISTS subscription;
+        </rollback>
+    </changeSet>
+
     <changeSet id="feed_item" author="gg">
         <sql>
             CREATE TABLE feed_item
@@ -48,7 +60,8 @@
             title TEXT COLLATE pg_catalog."default" NOT NULL,
             subscription_id BIGINT,
             created_at TIMESTAMP WITHOUT TIME ZONE,
-            CONSTRAINT pk_feed_item PRIMARY KEY (id)
+            CONSTRAINT pk_feed_item PRIMARY KEY (id),
+            CONSTRAINT fk_feeditem_to_subscription FOREIGN KEY (subscription_id) REFERENCES subscription (id)
             );
         </sql>
         <rollback>
