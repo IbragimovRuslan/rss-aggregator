@@ -8,6 +8,5 @@ import java.util.List;
 
 @Repository
 public interface FeedItemRepository extends CommonRepository<FeedItem, Long> {
-
-    List<FeedItem> findBySubscriptionId(String subscriptionId);
+    List<FeedItem> findBySubscriptionId(Long subscriptionId);
 }

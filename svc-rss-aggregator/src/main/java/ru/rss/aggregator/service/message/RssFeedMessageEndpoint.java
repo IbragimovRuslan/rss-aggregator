@@ -3,9 +3,9 @@ package ru.rss.aggregator.service.message;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
+import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.integration.annotation.MessageEndpoint;
 import org.springframework.integration.annotation.Poller;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -15,9 +15,11 @@ import ru.rss.aggregator.model.Feed;
 import ru.rss.aggregator.model.FeedItem;
 import ru.rss.aggregator.model.Subscription;
 import ru.rss.aggregator.model.SyndFeedWrapper;
+import ru.rss.aggregator.model.elastic.Item;
 import ru.rss.aggregator.repository.FeedItemRepository;
 import ru.rss.aggregator.repository.FeedRepository;
 import ru.rss.aggregator.repository.SubscriptionRepository;
+import ru.rss.aggregator.repository.elasticsearch.ItemRepository;
 import ru.rss.aggregator.utils.TimeUtils;
 
 import java.io.IOException;
@@ -27,18 +29,15 @@ import java.util.List;
 import java.util.Objects;
 
 @MessageEndpoint
+@AllArgsConstructor
 public class RssFeedMessageEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(RssFeedMessageEndpoint.class);
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    @Autowired
-    private FeedItemRepository feedItemRepository;
-
-    @Autowired
-    private FeedRepository feedRepository;
-
-    @Autowired
-    private SubscriptionRepository subscriptionRepository;
+    private final ItemRepository itemRepository;
+    private final FeedItemRepository feedItemRepository;
+    private final FeedRepository feedRepository;
+    private final SubscriptionRepository subscriptionRepository;
 
     @ServiceActivator(inputChannel = "feedChannel", poller = @Poller(maxMessagesPerPoll = "1", fixedDelay = "10000"))
     public void handleFeeds(Message<List<SyndFeedWrapper>> message) throws IOException {
@@ -46,6 +45,7 @@ public class RssFeedMessageEndpoint {
         for (SyndFeedWrapper syndFeedWrapper : syndFeeds) {
             SyndFeed syndFeed = syndFeedWrapper.getSyndFeed();
             String feedUrl = syndFeed.getLink();
+
             if (feedUrl == null) {
                 logger.warn("Feed Link undefined for FEED[title]: {}", syndFeed.getTitle());
                 continue;
@@ -57,8 +57,14 @@ public class RssFeedMessageEndpoint {
                 continue;
             }
 
-            Feed feed = s.getFeed();
+            // There's no easy way to update feed if it has no lastBuildDate. We're not replicating this feed.
+            if (Objects.isNull(syndFeed.getPublishedDate())) {
+                logger.info("Skip Feed {} - has no lastBuildDate, ", feedUrl);
+                continue;
+            }
             LocalDateTime publishedDate = TimeUtils.dateToLocalDateTime(syndFeed.getPublishedDate());
+
+            Feed feed = s.getFeed();
             if (feed != null) {
                 if (feed.getLastBuildDate().compareTo(publishedDate) == 0) {
                     logger.info("Found Feed {} - has actual date and will not be replaced with a new", feedUrl);
@@ -74,7 +80,8 @@ public class RssFeedMessageEndpoint {
                 subscriptionRepository.save(s);
             }
 
-            List<FeedItem> items = new ArrayList<>();
+            List<FeedItem> feedItems = new ArrayList<>();
+            List<Item> elasticItems = new ArrayList<>();
 
             logger.info("Rss feed Title: {}, URL: {}\n", syndFeed.getTitle(), syndFeed.getUri());
 
@@ -90,19 +97,24 @@ public class RssFeedMessageEndpoint {
                     continue;
                 }
 
+                String jsonItemStr = OBJECT_MAPPER.writeValueAsString(syndEntry);
+
                 FeedItem feedItem = new FeedItem(
                         guid,
                         syndEntry.getTitle(),
                         Objects.isNull(syndEntry.getDescription()) ? null : syndEntry.getDescription().getValue(),
                         syndEntry.getAuthor(),
                         TimeUtils.dateToLocalDateTime(syndEntry.getPublishedDate()),
-                        OBJECT_MAPPER.writeValueAsString(syndEntry),
+                        jsonItemStr,
                         s,
                         LocalDateTime.now()
                 );
-                items.add(feedItem);
+                feedItems.add(feedItem);
+                elasticItems.add(new Item(jsonItemStr));
             }
-            feedItemRepository.saveAll(items);
+
+            feedItemRepository.saveAll(feedItems);
+            itemRepository.saveAll(elasticItems);
         }
     }
 }

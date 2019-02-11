@@ -13,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
+@ToString(callSuper = true, exclude = "feed")
 public class Subscription extends AbstractEntity<Long> {
 
 	@Column(name = "rss_url")
@@ -22,7 +22,7 @@ public class Subscription extends AbstractEntity<Long> {
 	@Column(name = "subscription_cnt")
 	private int subscriptionCount;
 
-	@OneToOne(fetch = FetchType.EAGER) //todo: LAZY
+	@OneToOne(fetch = FetchType.EAGER)
 	@JoinColumn(name = "feed_id")
 	private Feed feed;
 
