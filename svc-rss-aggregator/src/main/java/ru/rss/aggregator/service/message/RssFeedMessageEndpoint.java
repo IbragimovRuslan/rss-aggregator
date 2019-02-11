@@ -2,6 +2,7 @@ package ru.rss.aggregator.service.message;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rometools.rome.feed.synd.SyndEntry;
+import com.rometools.rome.feed.synd.SyndEntryImpl;
 import com.rometools.rome.feed.synd.SyndFeed;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
@@ -11,10 +12,7 @@ import org.springframework.integration.annotation.Poller;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
 import org.springframework.util.StringUtils;
-import ru.rss.aggregator.model.Feed;
-import ru.rss.aggregator.model.FeedItem;
-import ru.rss.aggregator.model.Subscription;
-import ru.rss.aggregator.model.SyndFeedWrapper;
+import ru.rss.aggregator.model.*;
 import ru.rss.aggregator.model.elastic.Item;
 import ru.rss.aggregator.repository.FeedItemRepository;
 import ru.rss.aggregator.repository.FeedRepository;
@@ -28,13 +26,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static com.fasterxml.jackson.databind.MapperFeature.DEFAULT_VIEW_INCLUSION;
-
 @MessageEndpoint
 @AllArgsConstructor
 public class RssFeedMessageEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(RssFeedMessageEndpoint.class);
-    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper().disable(DEFAULT_VIEW_INCLUSION);
+    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper().addMixIn(SyndEntryImpl.class, SyndEntryImplMixIn.class);
 
     private final ItemRepository itemRepository;
     private final FeedItemRepository feedItemRepository;
@@ -100,22 +96,18 @@ public class RssFeedMessageEndpoint {
                     continue;
                 }
 
+                String jsonItemStr = OBJECT_MAPPER.writeValueAsString(syndEntry);
+
                 FeedItem feedItem = new FeedItem(
                         guid,
                         syndEntry.getTitle(),
                         Objects.isNull(syndEntry.getDescription()) ? null : syndEntry.getDescription().getValue(),
                         syndEntry.getAuthor(),
                         DateTimeUtils.dateToLocalDateTime(syndEntry.getPublishedDate()),
-                        null,
+                        jsonItemStr,
                         s,
                         LocalDateTime.now()
                 );
-
-                /*SyndEntryImpl has an instance of the ObjectBean which refers back to SyndEntryImp, so we can't automatically serialize this object
-                * because of recursion error. So we serialize an instance of a feed item model class.
-                */
-                String jsonItemStr = OBJECT_MAPPER.writeValueAsString(feedItem);
-                feedItem.setJsonItem(jsonItemStr);
 
                 feedItems.add(feedItem);
                 elasticItems.add(new Item(jsonItemStr));
