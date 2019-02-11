@@ -1,5 +1,6 @@
 package ru.rss.aggregator.service.message;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import org.slf4j.Logger;
@@ -15,20 +16,26 @@ import ru.rss.aggregator.model.FeedItem;
 import ru.rss.aggregator.model.Subscription;
 import ru.rss.aggregator.model.SyndFeedWrapper;
 import ru.rss.aggregator.repository.FeedItemRepository;
+import ru.rss.aggregator.repository.FeedRepository;
 import ru.rss.aggregator.repository.SubscriptionRepository;
+import ru.rss.aggregator.utils.TimeUtils;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @MessageEndpoint
 public class RssFeedMessageEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(RssFeedMessageEndpoint.class);
+    private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Autowired
     private FeedItemRepository feedItemRepository;
+
+    @Autowired
+    private FeedRepository feedRepository;
 
     @Autowired
     private SubscriptionRepository subscriptionRepository;
@@ -51,12 +58,19 @@ public class RssFeedMessageEndpoint {
             }
 
             Feed feed = s.getFeed();
-            if (feed != null && feed.getLastBuildDate().compareTo(LocalDateTime.ofInstant(syndFeed.getPublishedDate().toInstant(), ZoneId.systemDefault())) == 0) {
-                logger.info("Found Feed {} - has actual date and will not be replaced with a new", feedUrl);
-                continue;
+            LocalDateTime publishedDate = TimeUtils.dateToLocalDateTime(syndFeed.getPublishedDate());
+            if (feed != null) {
+                if (feed.getLastBuildDate().compareTo(publishedDate) == 0) {
+                    logger.info("Found Feed {} - has actual date and will not be replaced with a new", feedUrl);
+                    continue;
+                } else {
+                    feed.setLastBuildDate(publishedDate);
+                    feedRepository.save(feed);
+                }
             } else {
-                feed = new Feed(feedUrl, syndFeed.getTitle(), LocalDateTime.ofInstant(syndFeed.getPublishedDate().toInstant(), ZoneId.systemDefault()));
+                feed = new Feed(feedUrl, syndFeed.getTitle(), publishedDate);
                 s.setFeed(feed);
+                feedRepository.save(feed);
                 subscriptionRepository.save(s);
             }
 
@@ -79,10 +93,10 @@ public class RssFeedMessageEndpoint {
                 FeedItem feedItem = new FeedItem(
                         guid,
                         syndEntry.getTitle(),
-                        syndEntry.getDescription().getValue(),
+                        Objects.isNull(syndEntry.getDescription()) ? null : syndEntry.getDescription().getValue(),
                         syndEntry.getAuthor(),
-                        LocalDateTime.ofInstant(syndFeed.getPublishedDate().toInstant(), ZoneId.systemDefault()),
-                        "",
+                        TimeUtils.dateToLocalDateTime(syndEntry.getPublishedDate()),
+                        OBJECT_MAPPER.writeValueAsString(syndEntry),
                         s,
                         LocalDateTime.now()
                 );
