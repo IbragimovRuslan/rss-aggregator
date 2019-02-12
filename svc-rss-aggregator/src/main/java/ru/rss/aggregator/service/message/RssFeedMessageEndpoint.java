@@ -50,8 +50,8 @@ public class RssFeedMessageEndpoint {
                 continue;
             }
 
-            Subscription s = subscriptionRepository.findByRssUrl(syndFeedWrapper.getRssUrs());
-            if (s == null) {
+            Subscription subscription = subscriptionRepository.findByRssUrl(syndFeedWrapper.getRssUrs());
+            if (subscription == null) {
                 logger.error("No subscription found for URL: " + syndFeedWrapper.getRssUrs());
                 continue;
             }
@@ -63,7 +63,7 @@ public class RssFeedMessageEndpoint {
             }
             LocalDateTime publishedDate = DateTimeUtils.dateToLocalDateTime(syndFeed.getPublishedDate());
 
-            Feed feed = s.getFeed();
+            Feed feed = subscription.getFeed();
             if (feed != null) {
                 if (feed.getLastBuildDate().compareTo(publishedDate) == 0) {
                     logger.info("Found Feed {} - has actual date and will not be replaced with a new", feedUrl);
@@ -74,9 +74,9 @@ public class RssFeedMessageEndpoint {
                 }
             } else {
                 feed = new Feed(feedUrl, syndFeed.getTitle(), publishedDate);
-                s.setFeed(feed);
+                subscription.setFeed(feed);
                 feedRepository.save(feed);
-                subscriptionRepository.save(s);
+                subscriptionRepository.save(subscription);
             }
 
             List<FeedItem> feedItems = new ArrayList<>();
@@ -97,17 +97,7 @@ public class RssFeedMessageEndpoint {
                 }
 
                 String jsonItemStr = OBJECT_MAPPER.writeValueAsString(syndEntry);
-
-                FeedItem feedItem = new FeedItem(
-                        guid,
-                        syndEntry.getTitle(),
-                        Objects.isNull(syndEntry.getDescription()) ? null : syndEntry.getDescription().getValue(),
-                        syndEntry.getAuthor(),
-                        DateTimeUtils.dateToLocalDateTime(syndEntry.getPublishedDate()),
-                        jsonItemStr,
-                        s,
-                        LocalDateTime.now()
-                );
+                FeedItem feedItem = new FeedItem(jsonItemStr, subscription, LocalDateTime.now());
 
                 feedItems.add(feedItem);
                 elasticItems.add(new Item(jsonItemStr));

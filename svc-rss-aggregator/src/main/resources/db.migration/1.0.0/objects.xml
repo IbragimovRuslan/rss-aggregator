@@ -52,13 +52,8 @@
             CREATE TABLE feed_item
             (
             id BIGINT,
-            author VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
-            description TEXT COLLATE pg_catalog."default" NOT NULL,
-            guid VARCHAR(255) COLLATE pg_catalog."default" NOT NULL,
-            json_item TEXT COLLATE pg_catalog."default" NOT NULL,
-            publication_date TIMESTAMP WITHOUT TIME ZONE,
-            title TEXT COLLATE pg_catalog."default" NOT NULL,
             subscription_id BIGINT,
+            item jsonb,
             created_at TIMESTAMP WITHOUT TIME ZONE,
             CONSTRAINT pk_feed_item PRIMARY KEY (id),
             CONSTRAINT fk_feeditem_to_subscription FOREIGN KEY (subscription_id) REFERENCES subscription (id)

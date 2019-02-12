@@ -1,8 +1,11 @@
 package ru.rss.aggregator.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.Type;
+import org.hibernate.annotations.TypeDef;
 import org.hibernate.annotations.UpdateTimestamp;
 import ru.rss.aggregator.model.common.AbstractEntity;
 
@@ -12,31 +15,20 @@ import java.util.Date;
 
 @Data
 @Entity
+@TypeDef(
+		name = "pgsql_jsonb",
+		typeClass = JsonBinaryType.class
+)
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @ToString(callSuper = true, exclude = "subscription")
 public class FeedItem extends AbstractEntity<Long> {
 
-	@Column(name = "guid")
-	private String guid;
-
-	@Column(name = "title")
-	private String title;
-
-	@Column(name = "description")
-	private String description;
-
-	@Column(name = "author")
-	private String author;
-
-	@Column(name = "publication_date")
-	private LocalDateTime publicationDate;
-
-	@Column(name = "json_item")
+	@Column(name = "item")
+	@Type(type = "pgsql_jsonb")
 	private String jsonItem;
 
-	@JsonIgnore
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "subscription_id")
 	private Subscription subscription;
