@@ -40,7 +40,7 @@ public class RssFeedController {
     }
 
     @PostMapping("/subscribe")
-    public Response register(@RequestBody(required = true) @Valid SubscriptionRequest subscriptionRequest) {
+    public Response register(@Valid SubscriptionRequest subscriptionRequest) {
 
         String rssUrl = subscriptionRequest.getRssUrl().trim().toLowerCase();
         if (rssUrl.endsWith("/"))

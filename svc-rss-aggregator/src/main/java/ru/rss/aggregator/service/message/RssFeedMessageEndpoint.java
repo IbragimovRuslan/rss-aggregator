@@ -11,6 +11,7 @@ import org.springframework.integration.annotation.MessageEndpoint;
 import org.springframework.integration.annotation.Poller;
 import org.springframework.integration.annotation.ServiceActivator;
 import org.springframework.messaging.Message;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import ru.rss.aggregator.model.*;
 import ru.rss.aggregator.model.elastic.Item;
@@ -28,6 +29,7 @@ import java.util.Objects;
 
 @MessageEndpoint
 @AllArgsConstructor
+@Transactional
 public class RssFeedMessageEndpoint {
     private static final Logger logger = LoggerFactory.getLogger(RssFeedMessageEndpoint.class);
     private final static ObjectMapper OBJECT_MAPPER = new ObjectMapper().addMixIn(SyndEntryImpl.class, SyndEntryImplMixIn.class);
